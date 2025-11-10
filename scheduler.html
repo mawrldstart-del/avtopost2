@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Планировщик - Telegram AutoPoster</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); }
+        .calendar-day { transition: all 0.3s ease; }
+        .calendar-day:hover { background: #e3f2fd; }
+        .calendar-day.selected { background: #3498db; color: white; }
+        .calendar-day.has-posts { position: relative; }
+        .calendar-day.has-posts::after { content: ''; position: absolute; bottom: 2px; right: 2px; width: 6px; height: 6px; background: #e74c3c; border-radius: 50%; }
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; }
+        .modal.show { display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: white; border-radius: 1rem; padding: 1.5rem; margin: 1rem; max-width: 400px; width: 100%; max-height: 80vh; overflow-y: auto; }
+        .post-card { transition: all 0.3s ease; }
+        .post-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .time-slot { transition: all 0.3s ease; }
+        .time-slot.selected { background: #3498db; color: white; }
+        .template-card { transition: all 0.3s ease; cursor: pointer; }
+        .template-card:hover { transform: translateY(-2px); }
+        .template-card.selected { border-color: #3498db; background: #e3f2fd; }
+    </style>
+</head>
+<body class="min-h-screen pb-20">
+    <!-- Header -->
+    <header class="bg-white shadow-sm px-4 py-4 mb-6">
+        <div class="max-w-md mx-auto flex items-center justify-between">
+            <div>
+                <h1 class="text-xl font-bold text-gray-800">Планировщик</h1>
+                <p class="text-sm text-gray-600" id="currentMonth">Ноябрь 2025</p>
+            </div>
+            <button onclick="showCreatePostModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors">
+                + Создать
+            </button>
+        </div>
+    </header>
+
+    <!-- Calendar -->
+    <section class="px-4 mb-6">
+        <div class="max-w-md mx-auto">
+            <div class="bg-white rounded-xl p-4 mb-4">
+                <div class="flex items-center justify-between mb-4">
+                    <button onclick="previousMonth()" class="p-2 text-gray-400 hover:text-gray-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                    </button>
+                    <h3 class="font-semibold text-gray-800" id="monthYear">Ноябрь 2025</h3>
+                    <button onclick="nextMonth()" class="p-2 text-gray-400 hover:text-gray-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="9 5l7 7-7 7"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-7 gap-1 mb-2">
+                    <div class="text-center text-xs text-gray-500 py-2">Пн</div>
+                    <div class="text-center text-xs text-gray-500 py-2">Вт</div>
+                    <div class="text-center text-xs text-gray-500 py-2">Ср</div>
+                    <div class="text-center text-xs text-gray-500 py-2">Чт</div>
+                    <div class="text-center text-xs text-gray-500 py-2">Пт</div>
+                    <div class="text-center text-xs text-gray-500 py-2">Сб</div>
+                    <div class="text-center text-xs text-gray-500 py-2">Вс</div>
+                </div>
+                
+                <div id="calendarGrid" class="grid grid-cols-7 gap-1">
+                    <!-- Calendar days will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Scheduled Posts -->
+    <section class="px-4 mb-6">
+        <div class="max-w-md mx-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-gray-800">Запланированные посты</h3>
+                <div class="flex gap-2">
+                    <button onclick="showTemplatesModal()" class="text-blue-600 text-sm font-medium">Шаблоны</button>
+                    <button onclick="showHistoryModal()" class="text-gray-600 text-sm font-medium">История</button>
+                </div>
+            </div>
+            <div class="space-y-3" id="scheduledPostsList">
+                <!-- Scheduled posts will be inserted here -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Create Post Modal -->
+    <div id="createPostModal" class="modal">
+        <div class="modal-content">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold">Создать пост</h2>
+                <button onclick="hideCreatePostModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <form id="createPostForm">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Группы для публикации</label>
+                    <div class="space-y-2" id="groupSelection">
+                        <!-- Group checkboxes will be inserted here -->
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Текст поста</label>
+                    <textarea id="postContent" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" rows="4" placeholder="Введите текст поста..." required></textarea>
+                    <div class="text-xs text-gray-500 mt-1">
+                        <span id="charCount">0</span>/2000 символов
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Медиа</label>
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                        <svg class="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                        <p class="text-sm text-gray-600">Перетащите изображения или нажмите для выбора</p>
+                        <input type="file" class="hidden" accept="image/*" multiple>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Дата и время</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <input type="date" id="postDate" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        <select id="postTime" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                            <option value="">Выберите время</option>
+                            <option value="09:00">09:00</option>
+                            <option value="12:00">12:00</option>
+                            <option value="15:00">15:00</option>
+                            <option value="18:00">18:00</option>
+                            <option value="21:00">21:00</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3">
+                    <button type="button" onclick="saveAsTemplate()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                        В шаблон
+                    </button>
+                    <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        Запланировать
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Templates Modal -->
+    <div id="templatesModal" class="modal">
+        <div class="modal-content">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold">Шаблоны постов</h2>
+                <button onclick="hideTemplatesModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Template statistics -->
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div class="bg-blue-50 rounded-lg p-3 text-center">
+                    <div class="text-lg font-bold text-blue-600" id="template-total-count">0</div>
+                    <div class="text-xs text-gray-600">Всего шаблонов</div>
+                </div>
+                <div class="bg-green-50 rounded-lg p-3 text-center">
+                    <div class="text-lg font-bold text-green-600" id="template-category-count">0</div>
+                    <div class="text-xs text-gray-600">Категорий</div>
+                </div>
+            </div>
+            
+            <!-- Search and filter -->
+            <div class="mb-4">
+                <div class="flex gap-2 mb-2">
+                    <input type="text" id="template-search" placeholder="Поиск шаблонов..." 
+                           class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <select id="template-category-filter" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <!-- Categories will be inserted here -->
+                </select>
+            </div>
+            
+            <div class="space-y-3" id="template-list">
+                <!-- Templates will be inserted here -->
+            </div>
+            
+            <button id="create-template-btn" class="w-full mt-4 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+                + Создать шаблон
+            </button>
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div id="historyModal" class="modal">
+        <div class="modal-content">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold">История постов</h2>
+                <button onclick="hideHistoryModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="space-y-3" id="historyList">
+                <!-- History will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 z-50">
+        <div class="max-w-md mx-auto">
+            <div class="flex justify-around">
+                <a href="index.html" class="flex flex-col items-center py-2 text-gray-400">
+                    <svg class="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+                    </svg>
+                    <span class="text-xs">Главная</span>
+                </a>
+                <a href="groups.html" class="flex flex-col items-center py-2 text-gray-400">
+                    <svg class="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm4 18v-6h2.5l-2.54-7.63A1.5 1.5 0 0 0 18.54 8H17c-.8 0-1.54.37-2.01.99L13 12l-1.99-3.01A2.5 2.5 0 0 0 8.5 8H7.46c-.8 0-1.54.37-2.01.99L5.5 10H8v12h2v-6h4v6h6z"/>
+                    </svg>
+                    <span class="text-xs">Группы</span>
+                </a>
+                <a href="dashboard.html" class="flex flex-col items-center py-2 text-gray-400">
+                    <svg class="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                    </svg>
+                    <span class="text-xs">Аналитика</span>
+                </a>
+                <a href="scheduler.html" class="flex flex-col items-center py-2 text-blue-600">
+                    <svg class="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                    </svg>
+                    <span class="text-xs">Планировщик</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <script src="notifications.js"></script>
+    <script src="api-client.js"></script>
+    <script src="templates.js"></script>
+    <script>
+        // Sample data
+        let currentDate = new Date();
+        let selectedDate = null;
+        
+        const groups = [
+            { id: 1, name: "Tech News", selected: false },
+            { id: 2, name: "Crypto Community", selected: false },
+            { id: 3, name: "Marketing Tips", selected: false }
+        ];
+
+        const templates = [
+            {
+                id: 1,
+                name: "Новостной пост",
+                content: "🔥 Новости дня:\n\n📌 {заголовок}\n\nПодробности по ссылке 👇",
+                type: "news"
+            },
+            {
+                id: 2,
+                name: "Маркетинговый пост",
+                content: "💡 Маркетинговый совет:\n\n{совет}\n\nПолезно? Лайкните! 👍",
+                type: "marketing"
+            },
+            {
+                id: 3,
+                name: "Мотивационный пост",
+                content: "🎯 Сегодняшняя цель:\n\n{мотивация}\n\nДерзайте! 💪",
+                type: "motivation"
+            }
+        ];
+
+        const scheduledPosts = [
+            {
+                id: 1,
+                group: "Tech News",
+                content: "Новые технологии в 2025 году...",
+                date: "2025-11-12",
+                time: "15:00",
+                status: "scheduled"
+            },
+            {
+                id: 2,
+                group: "Crypto Community",
+                content: "Обзор рынка криптовалют...",
+                date: "2025-11-13",
+                time: "18:00",
+                status: "scheduled"
+            }
+        ];
+
+        const postHistory = [
+            {
+                id: 1,
+                group: "Tech News",
+                content: "Искусственный интеллект продолжает...",
+                date: "2025-11-10",
+                time: "12:00",
+                views: 1250,
+                status: "published"
+            },
+            {
+                id: 2,
+                group: "Marketing Tips",
+                content: "5 способов увеличить продажи...",
+                date: "2025-11-09",
+                time: "15:00",
+                views: 890,
+                status: "published"
+            }
+        ];
+
+        // Calendar functions
+        function renderCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            
+            document.getElementById('monthYear').textContent = 
+                currentDate.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+            
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay() + 1);
+            
+            const calendarGrid = document.getElementById('calendarGrid');
+            calendarGrid.innerHTML = '';
+            
+            for (let i = 0; i < 42; i++) {
+                const date = new Date(startDate);
+                date.setDate(startDate.getDate() + i);
+                
+                const dayElement = document.createElement('div');
+                dayElement.className = `calendar-day text-center py-2 text-sm cursor-pointer rounded-lg ${
+                    date.getMonth() === month ? 'text-gray-800' : 'text-gray-400'
+                } ${date.toDateString() === new Date().toDateString() ? 'bg-blue-100' : ''}`;
+                dayElement.textContent = date.getDate();
+                dayElement.onclick = () => selectDate(date);
+                
+                // Add indicator for days with posts
+                if (hasPostsOnDate(date)) {
+                    dayElement.classList.add('has-posts');
+                }
+                
+                calendarGrid.appendChild(dayElement);
+            }
+        }
+
+        function hasPostsOnDate(date) {
+            const dateStr = date.toISOString().split('T')[0];
+            return scheduledPosts.some(post => post.date === dateStr) || 
+                   postHistory.some(post => post.date === dateStr);
+        }
+
+        function selectDate(date) {
+            selectedDate = date;
+            renderCalendar();
+            filterPostsByDate(date);
+        }
+
+        function filterPostsByDate(date) {
+            const dateStr = date.toISOString().split('T')[0];
+            const filteredPosts = scheduledPosts.filter(post => post.date === dateStr);
+            renderScheduledPosts(filteredPosts);
+        }
+
+        function previousMonth() {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            renderCalendar();
+        }
+
+        function nextMonth() {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            renderCalendar();
+        }
+
+        // Post management
+        function renderScheduledPosts(posts = scheduledPosts) {
+            const container = document.getElementById('scheduledPostsList');
+            if (posts.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-8">Нет запланированных постов</div>';
+                return;
+            }
+            
+            container.innerHTML = posts.map(post => `
+                <div class="post-card bg-white rounded-xl p-4 shadow-sm">
+                    <div class="flex items-start justify-between mb-2">
+                        <div class="flex-1">
+                            <div class="flex items-center mb-1">
+                                <h4 class="font-semibold text-sm text-gray-800 mr-2">${post.group}</h4>
+                                <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-2">${post.content}</p>
+                            <div class="flex items-center text-xs text-gray-500">
+                                <span class="mr-3">${post.date} ${post.time}</span>
+                                <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">Запланировано</span>
+                            </div>
+                        </div>
+                        <button onclick="deletePost(${post.id})" class="text-gray-400 hover:text-red-600 p-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderTemplates() {
+            const container = document.getElementById('templatesList');
+            container.innerHTML = templates.map(template => `
+                <div class="template-card border-2 border-gray-200 rounded-lg p-3" onclick="selectTemplate(${template.id})">
+                    <div class="font-semibold text-sm mb-1">${template.name}</div>
+                    <div class="text-xs text-gray-600">${template.content.substring(0, 50)}...</div>
+                </div>
+            `).join('');
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('historyList');
+            container.innerHTML = postHistory.map(post => `
+                <div class="bg-white rounded-lg p-3 border border-gray-200">
+                    <div class="flex items-start justify-between mb-2">
+                        <div class="flex-1">
+                            <div class="font-semibold text-sm mb-1">${post.group}</div>
+                            <p class="text-xs text-gray-600 mb-1">${post.content}</p>
+                            <div class="flex items-center text-xs text-gray-500">
+                                <span class="mr-3">${post.date} ${post.time}</span>
+                                <span class="mr-3">${post.views} просмотров</span>
+                                <span class="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">Опубликовано</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderGroupSelection() {
+            const container = document.getElementById('groupSelection');
+            container.innerHTML = groups.map(group => `
+                <label class="flex items-center">
+                    <input type="checkbox" class="mr-2" value="${group.id}" ${group.selected ? 'checked' : ''}>
+                    <span class="text-sm">${group.name}</span>
+                </label>
+            `).join('');
+        }
+
+        // Modal functions
+        function showCreatePostModal() {
+            renderGroupSelection();
+            document.getElementById('createPostModal').classList.add('show');
+            
+            // Set today's date as default
+            const today = new Date();
+            document.getElementById('postDate').value = today.toISOString().split('T')[0];
+        }
+
+        function hideCreatePostModal() {
+            document.getElementById('createPostModal').classList.remove('show');
+            document.getElementById('createPostForm').reset();
+        }
+
+        function showTemplatesModal() {
+            renderTemplates();
+            document.getElementById('templatesModal').classList.add('show');
+        }
+
+        function hideTemplatesModal() {
+            document.getElementById('templatesModal').classList.remove('show');
+        }
+
+        function showHistoryModal() {
+            renderHistory();
+            document.getElementById('historyModal').classList.add('show');
+        }
+
+        function hideHistoryModal() {
+            document.getElementById('historyModal').classList.remove('show');
+        }
+
+        // Actions
+        function selectTemplate(templateId) {
+            const template = templates.find(t => t.id === templateId);
+            document.getElementById('postContent').value = template.content;
+            hideTemplatesModal();
+            showCreatePostModal();
+        }
+
+        function deletePost(postId) {
+            const index = scheduledPosts.findIndex(p => p.id === postId);
+            if (index > -1) {
+                scheduledPosts.splice(index, 1);
+                renderScheduledPosts();
+                showNotification('Пост удален');
+            }
+        }
+
+        function saveAsTemplate() {
+            const content = document.getElementById('postContent').value;
+            if (content.trim()) {
+                templates.push({
+                    id: Date.now(),
+                    name: `Шаблон ${templates.length + 1}`,
+                    content: content,
+                    type: "custom"
+                });
+                showNotification('Шаблон сохранен');
+            }
+        }
+
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 left-4 right-4 bg-green-600 text-white px-4 py-3 rounded-lg z-50 text-center';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Form submission
+        document.getElementById('createPostForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const selectedGroups = Array.from(document.querySelectorAll('#groupSelection input:checked'))
+                .map(input => parseInt(input.value));
+            
+            if (selectedGroups.length === 0) {
+                notify.warning('Выберите хотя бы одну группу');
+                return;
+            }
+            
+            const postData = {
+                group_id: selectedGroups[0],
+                content: document.getElementById('postContent').value,
+                scheduled_time: `${document.getElementById('postDate').value}T${document.getElementById('postTime').value}:00`,
+                media_urls: '' // Можно добавить поддержку медиа
+            };
+            
+            try {
+                const result = await apiClient.createPost(postData);
+                if (result.success) {
+                    await loadScheduledPosts();
+                    hideCreatePostModal();
+                    notify.success('Пост запланирован');
+                } else {
+                    notify.error(result.message || 'Ошибка при создании поста');
+                }
+            } catch (error) {
+                // Fallback: добавление в локальный массив
+                const newPost = {
+                    id: Date.now(),
+                    group: groups.find(g => g.id === selectedGroups[0]).name,
+                    content: document.getElementById('postContent').value,
+                    date: document.getElementById('postDate').value,
+                    time: document.getElementById('postTime').value,
+                    status: "scheduled"
+                };
+                
+                scheduledPosts.push(newPost);
+                renderScheduledPosts();
+                hideCreatePostModal();
+                notify.success('Пост запланирован (локально)');
+            }
+        });
+
+        // Character counter
+        document.getElementById('postContent').addEventListener('input', function(e) {
+            document.getElementById('charCount').textContent = e.target.value.length;
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            renderCalendar();
+            renderScheduledPosts();
+            
+            // Animate elements
+            anime({
+                targets: '.post-card',
+                translateY: [30, 0],
+                opacity: [0, 1],
+                delay: anime.stagger(100),
+                duration: 600,
+                easing: 'easeOutExpo'
+            });

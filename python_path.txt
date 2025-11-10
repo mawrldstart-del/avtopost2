@@ -1,0 +1,2 @@
+C:\Program Files\Python311\python.exe
+C:\Users\Mawrl\AppData\Local\Microsoft\WindowsApps\python.exe

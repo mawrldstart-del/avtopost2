@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Аналитика - Telegram AutoPoster</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="notifications.js"></script>
+    <script src="api-client.js"></script>
+    <script src="analytics.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); }
+        .stat-card { transition: all 0.3s ease; }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .chart-container { height: 200px; }
+        .quick-action { transition: all 0.3s ease; }
+        .quick-action:active { transform: scale(0.95); }
+        .pulse-dot { animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-20">
+    <!-- Header -->
+    <header class="bg-white shadow-sm px-4 py-4 mb-6">
+        <div class="max-w-md mx-auto">
+            <h1 class="text-xl font-bold text-gray-800">Аналитика и статистика</h1>
+            <p class="text-sm text-gray-600">Обзор эффективности ваших постов</p>
+        </div>
+    </header>
+
+    <!-- Stats Overview -->
+    <section class="px-4 mb-6">
+        <div class="max-w-md mx-auto">
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div class="stat-card bg-white rounded-xl p-4 text-center">
+                    <div class="text-2xl font-bold text-blue-600 mb-1" id="totalPosts">0</div>
+                    <div class="text-sm text-gray-600">Всего постов</div>
+                    <div class="text-xs text-green-600 mt-1">+12% за неделю</div>
+                </div>
+                <div class="stat-card bg-white rounded-xl p-4 text-center">
+                    <div class="text-2xl font-bold text-green-600 mb-1" id="totalViews">0</div>
+                    <div class="text-sm text-gray-600">Просмотров</div>
+                    <div class="text-xs text-green-600 mt-1">+8% за неделю</div>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="stat-card bg-white rounded-xl p-4 text-center">
+                    <div class="text-2xl font-bold text-purple-600 mb-1" id="avgEngagement">0</div>
+                    <div class="text-sm text-gray-600">Вовлеченность</div>
+                    <div class="text-xs text-blue-600 mt-1">Средний показатель</div>
+                </div>
+                <div class="stat-card bg-white rounded-xl p-4 text-center">
+                    <div class="text-2xl font-bold text-orange-600 mb-1" id="activeGroups">0</div>
+                    <div class="text-sm text-gray-600">Активных групп</div>
+                    <div class="text-xs text-green-600 mt-1">Все онлайн</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Chart Section -->
+    <section class="px-4 mb-6">
+        <div class="max-w-md mx-auto">
+            <div class="bg-white rounded-xl p-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-semibold text-gray-800">Активность за неделю</h3>
+                    <select id="chartPeriod" class="text-sm border border-gray-300 rounded-lg px-2 py-1">
+                        <option value="week">Неделя</option>
+                        <option value="month">Месяц</option>
+                        <option value="quarter">Квартал</option>
+                    </select>
+                </div>
+                <div id="activityChart" class="chart-container"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Actions -->
+    <section class="px-4 mb-6">
+        <div class="max-w-md mx-auto">
+            <h3 class="font-semibold text-gray-800 mb-4">Быстрые действия</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="createQuickPost()" class="quick-action bg-white rounded-xl p-4 text-center shadow-sm">
+                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-2">
+                        <svg class="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                        </svg>
+                    </div>
+                    <div class="text-sm font-semibold">Создать пост</div>
+                </button>
+                <button onclick="viewScheduledPosts()" class="quick-action bg-white rounded-xl p-4 text-center shadow-sm">
+                    <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-2">
+                        <svg class="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                        </svg>
+                    </div>
+                    <div class="text-sm font-semibold">Запланированные</div>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Advanced Analytics -->
+    <section class="px-4 mb-6">
+        <div class="max-w-md mx-auto">
+            <div class="bg-white rounded-xl p-4 mb-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-semibold text-gray-800">Расширенная аналитика</h3>
+                    <select id="analytics-period" class="text-sm border border-gray-300 rounded-lg px-2 py-1">
+                        <option value="week">Неделя</option>
+                        <option value="month" selected>Месяц</option>
+                        <option value="quarter">Квартал</option>
+                    </select>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="text-center">
+                        <div class="text-lg font-bold text-blue-600" id="total-views">0</div>
+                        <div class="text-xs text-gray-600">Всего просмотров</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-lg font-bold text-green-600" id="avg-engagement">0</div>
+                        <div class="text-xs text-gray-600">Ср. вовлеченность</div>
+                    </div>
+                </div>
+                
+                <div id="engagement-chart" class="h-48 mb-4"></div>
+                <div id="group-comparison-chart" class="h-48 mb-4"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Recent Posts -->
+    <section class="px-4 mb-6">
+        <div class="max-w-md mx-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-gray-800">Последние посты</h3>
+                <button onclick="viewAllPosts()" class="text-blue-600 text-sm font-medium">Все посты</button>
+            </div>
+            <div class="space-y-3" id="recentPostsList">
+                <!-- Posts will be inserted here -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Export and Settings -->
+    <section class="px-4 mb-20">
+        <div class="max-w-md mx-auto">
+            <div class="bg-white rounded-xl p-4">
+                <h3 class="font-semibold text-gray-800 mb-4">Действия</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <button onclick="exportAnalyticsData()" id="export-data" 
+                            class="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg text-sm font-semibold transition-colors">
+                        📊 Экспорт данных
+                    </button>
+                    <button onclick="refreshAnalyticsData()" id="refresh-analytics" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg text-sm font-semibold transition-colors">
+                        🔄 Обновить
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Bottom Navigation -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 z-50">
+        <div class="max-w-md mx-auto">
+            <div class="flex justify-around">
+                <a href="index.html" class="flex flex-col items-center py-2 text-gray-400">
+                    <svg class="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+                    </svg>
+                    <span class="text-xs">Главная</span>
+                </a>
+                <a href="groups.html" class="flex flex-col items-center py-2 text-gray-400">
+                    <svg class="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm4 18v-6h2.5l-2.54-7.63A1.5 1.5 0 0 0 18.54 8H17c-.8 0-1.54.37-2.01.99L13 12l-1.99-3.01A2.5 2.5 0 0 0 8.5 8H7.46c-.8 0-1.54.37-2.01.99L5.5 10H8v12h2v-6h4v6h6z"/>
+                    </svg>
+                    <span class="text-xs">Группы</span>
+                </a>
+                <a href="dashboard.html" class="flex flex-col items-center py-2 text-blue-600">
+                    <svg class="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                    </svg>
+                    <span class="text-xs">Аналитика</span>
+                </a>
+                <a href="scheduler.html" class="flex flex-col items-center py-2 text-gray-400">
+                    <svg class="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                    </svg>
+                    <span class="text-xs">Планировщик</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <script>
+        // Sample data
+        const stats = {
+            totalPosts: 1247,
+            totalViews: 45680,
+            avgEngagement: 4.2,
+            activeGroups: 8
+        };
+
+        const recentPosts = [
+            {
+                id: 1,
+                group: "Tech News",
+                content: "Новые технологии в 2025 году...",
+                views: 1250,
+                engagement: 5.2,
+                time: "2 часа назад",
+                status: "published"
+            },
+            {
+                id: 2,
+                group: "Crypto Community",
+                content: "Обзор рынка криптовалют...",
+                views: 3400,
+                engagement: 3.8,
+                time: "5 часов назад",
+                status: "published"
+            },
+            {
+                id: 3,
+                group: "Marketing Tips",
+                content: "5 способов увеличить продажи...",
+                views: 890,
+                engagement: 6.1,
+                time: "Вчера",
+                status: "published"
+            }
+        ];
+
+        // Initialize charts and stats
+        function initializeDashboard() {
+            animateStats();
+            renderRecentPosts();
+            initChart();
+        }
+
+        function animateStats() {
+            // Animate stat counters
+            anime({
+                targets: '#totalPosts',
+                innerHTML: [0, stats.totalPosts],
+                duration: 2000,
+                round: 1,
+                easing: 'easeOutExpo'
+            });
+
+            anime({
+                targets: '#totalViews',
+                innerHTML: [0, stats.totalViews],
+                duration: 2000,
+                round: 1,
+                easing: 'easeOutExpo',
+                delay: 200
+            });
+
+            anime({
+                targets: '#avgEngagement',
+                innerHTML: [0, stats.avgEngagement],
+                duration: 2000,
+                round: 10,
+                easing: 'easeOutExpo',
+                delay: 400
+            });
+
+            anime({
+                targets: '#activeGroups',
+                innerHTML: [0, stats.activeGroups],
+                duration: 2000,
+                round: 1,
+                easing: 'easeOutExpo',
+                delay: 600
+            });
+        }
+
+        function renderRecentPosts() {
+            const container = document.getElementById('recentPostsList');
+            container.innerHTML = recentPosts.map(post => `
+                <div class="bg-white rounded-xl p-4 shadow-sm">
+                    <div class="flex items-start justify-between mb-2">
+                        <div class="flex-1">
+                            <div class="flex items-center mb-1">
+                                <h4 class="font-semibold text-sm text-gray-800 mr-2">${post.group}</h4>
+                                <span class="pulse-dot w-2 h-2 bg-green-500 rounded-full"></span>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-2">${post.content}</p>
+                            <div class="flex items-center text-xs text-gray-500">
+                                <span class="mr-3">${post.views} просмотров</span>
+                                <span class="mr-3">${post.engagement}% вовлеченность</span>
+                                <span>${post.time}</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs text-gray-400 mb-1">${post.time}</div>
+                            <div class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">
+                                Опубликовано
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function initChart() {
+            const chartDom = document.getElementById('activityChart');
+            const myChart = echarts.init(chartDom);
+
+            const option = {
+                color: ['#3498db'],
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    borderColor: '#e2e8f0',
+                    textStyle: {
+                        color: '#333'
+                    }
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+                    axisLine: {
+                        lineStyle: {
+                            color: '#e2e8f0'
+                        }
+                    },
+                    axisLabel: {
+                        color: '#64748b'
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLine: {
+                        lineStyle: {
+                            color: '#e2e8f0'
+                        }
+                    },
+                    axisLabel: {
+                        color: '#64748b'
+                    },
+                    splitLine: {
+                        lineStyle: {
+                            color: '#f1f5f9'
+                        }
+                    }
+                },
+                series: [
+                    {
+                        name: 'Посты',
+                        type: 'line',
+                        smooth: true,
+                        areaStyle: {
+                            opacity: 0.1
+                        },
+                        data: [12, 18, 25, 31, 28, 35, 42]
+                    }
+                ]
+            };
+
+            myChart.setOption(option);
+
+            // Handle chart period change
+            document.getElementById('chartPeriod').addEventListener('change', function(e) {
+                const period = e.target.value;
+                let data, categories;
+                
+                switch(period) {
+                    case 'month':
+                        categories = ['Нед 1', 'Нед 2', 'Нед 3', 'Нед 4'];
+                        data = [120, 150, 180, 210];
+                        break;
+                    case 'quarter':
+                        categories = ['Мес 1', 'Мес 2', 'Мес 3'];
+                        data = [450, 520, 480];
+                        break;
+                    default:
+                        categories = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+                        data = [12, 18, 25, 31, 28, 35, 42];
+                }
+                
+                myChart.setOption({
+                    xAxis: {
+                        data: categories
+                    },
+                    series: [{
+                        data: data
+                    }]
+                });
+            });
+        }
+
+        function createQuickPost() {
+            showNotification('Переход к созданию поста...');
+            setTimeout(() => {
+                window.location.href = 'scheduler.html';
+            }, 1000);
+        }
+
+        function viewScheduledPosts() {
+            window.location.href = 'scheduler.html';
+        }
+
+        function viewAllPosts() {
+            showNotification('Загрузка всех постов...');
+        }
+
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 left-4 right-4 bg-blue-600 text-white px-4 py-3 rounded-lg z-50 text-center';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        function exportAnalyticsData() {
+            if (typeof advancedAnalytics !== 'undefined') {
+                advancedAnalytics.exportData();
+            } else {
+                notify.info('Функция экспорта временно недоступна');
+            }
+        }
+
+        function refreshAnalyticsData() {
+            if (typeof advancedAnalytics !== 'undefined') {
+                advancedAnalytics.refreshData();
+            } else {
+                notify.info('Функция обновления временно недоступна');
+            }
+        }
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Загрузка реальных данных
+            await loadDashboardData();
+            
+            initializeDashboard();
+            
+            // Animate elements
+            anime({
+                targets: '.stat-card',
+                translateY: [30, 0],
+                opacity: [0, 1],
+                delay: anime.stagger(100),
+                duration: 600,
+                easing: 'easeOutExpo'
+            });
+        });
+
+        async function loadDashboardData() {
+            try {
+                const { groups, posts, stats } = await APIUtils.loadInitialData();
+                
+                // Обновление счетчиков
+                document.getElementById('totalPosts').textContent = stats.total_posts || 0;
+                document.getElementById('totalViews').textContent = APIUtils.formatNumber(45680);
+                document.getElementById('avgEngagement').textContent = '4.2';
+                document.getElementById('activeGroups').textContent = stats.total_groups || 0;
+                
+                // Обновление списка постов
+                if (posts.length > 0) {
+                    recentPosts = posts.slice(0, 3).map(post => ({
+                        id: post.id,
+                        group: post.group_name || `Group ${post.group_id}`,
+                        content: post.content.substring(0, 50) + '...',
+                        views: post.views_count || Math.floor(Math.random() * 5000),
+                        engagement: (Math.random() * 10).toFixed(1),
+                        time: APIUtils.formatDateTime(post.created_at).full,
+                        status: post.status
+                    }));
+                    renderRecentPosts();
+                }
+                
+                console.log('Dashboard data loaded');
+            } catch (error) {
+                console.log('Using mock data for dashboard');
+            }
+        }
+    </script>
+</body>
+</html>

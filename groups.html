@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление группами - Telegram AutoPoster</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); }
+        .group-card { transition: all 0.3s ease; }
+        .group-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .status-online { background: #27ae60; }
+        .status-offline { background: #e74c3c; }
+        .toggle-switch { transition: all 0.3s ease; }
+        .toggle-switch.active { background: #3498db; }
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; }
+        .modal.show { display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: white; border-radius: 1rem; padding: 1.5rem; margin: 1rem; max-width: 400px; width: 100%; }
+        .slider { -webkit-appearance: none; appearance: none; height: 6px; border-radius: 3px; background: #e2e8f0; outline: none; }
+        .slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #3498db; cursor: pointer; }
+    </style>
+</head>
+<body class="min-h-screen pb-20">
+    <!-- Header -->
+    <header class="bg-white shadow-sm px-4 py-4 mb-6">
+        <div class="max-w-md mx-auto flex items-center justify-between">
+            <h1 class="text-xl font-bold text-gray-800">Управление группами</h1>
+            <button onclick="showAddGroupModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors">
+                + Добавить
+            </button>
+        </div>
+    </header>
+
+    <!-- Groups List -->
+    <main class="px-4 mb-8">
+        <div class="max-w-md mx-auto space-y-4" id="groupsList">
+            <!-- Group cards will be inserted here -->
+        </div>
+    </main>
+
+    <!-- Add Group Modal -->
+    <div id="addGroupModal" class="modal">
+        <div class="modal-content">
+            <h2 class="text-lg font-bold mb-4">Добавить группу</h2>
+            <form id="addGroupForm">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Название группы</label>
+                    <input type="text" id="groupName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Введите название группы" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">ID группы</label>
+                    <input type="text" id="groupId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="@yourgroup или -1001234567890" required>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Тип группы</label>
+                    <select id="groupType" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="group">Группа</option>
+                        <option value="channel">Канал</option>
+                        <option value="supergroup">Супергруппа</option>
+                    </select>
+                </div>
+                <div class="flex gap-3">
+                    <button type="button" onclick="hideAddGroupModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                        Отмена
+                    </button>
+                    <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        Добавить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold">Настройки группы</h2>
+                <button onclick="hideSettingsModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium">Автопостинг</span>
+                    <div class="toggle-switch w-12 h-6 bg-gray-300 rounded-full relative cursor-pointer" onclick="toggleAutoposting(this)">
+                        <div class="absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform"></div>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Частота постов (в час)</label>
+                    <input type="range" class="slider w-full" min="1" max="24" value="4" id="postFrequency">
+                    <div class="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>1</span>
+                        <span id="frequencyValue">4</span>
+                        <span>24</span>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Типы контента</label>
+                    <div class="space-y-2">
+                        <label class="flex items-center">
+                            <input type="checkbox" class="mr-2" checked> Текст
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" class="mr-2" checked> Изображения
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" class="mr-2"> Видео
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" class="mr-2"> Документы
+                        </label>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Часовой пояс</label>
+                    <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option>Москва (UTC+3)</option>
+                        <option>Киев (UTC+2)</option>
+                        <option>Минск (UTC+3)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="flex gap-3 mt-6">
+                <button onclick="hideSettingsModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                    Отмена
+                </button>
+                <button onclick="saveSettings()" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    Сохранить
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 z-50">
+        <div class="max-w-md mx-auto">
+            <div class="flex justify-around">
+                <a href="index.html" class="flex flex-col items-center py-2 text-gray-400">
+                    <svg class="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+                    </svg>
+                    <span class="text-xs">Главная</span>
+                </a>
+                <a href="groups.html" class="flex flex-col items-center py-2 text-blue-600">
+                    <svg class="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm4 18v-6h2.5l-2.54-7.63A1.5 1.5 0 0 0 18.54 8H17c-.8 0-1.54.37-2.01.99L13 12l-1.99-3.01A2.5 2.5 0 0 0 8.5 8H7.46c-.8 0-1.54.37-2.01.99L5.5 10H8v12h2v-6h4v6h6z"/>
+                    </svg>
+                    <span class="text-xs">Группы</span>
+                </a>
+                <a href="dashboard.html" class="flex flex-col items-center py-2 text-gray-400">
+                    <svg class="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                    </svg>
+                    <span class="text-xs">Аналитика</span>
+                </a>
+                <a href="scheduler.html" class="flex flex-col items-center py-2 text-gray-400">
+                    <svg class="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                    </svg>
+                    <span class="text-xs">Планировщик</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <script>
+        // Load groups from API or use mock data
+        let groups = [];
+
+        async function loadGroups() {
+            try {
+                const apiGroups = await apiClient.getGroups();
+                groups = apiGroups.map(group => ({
+                    id: group.id,
+                    name: group.name,
+                    type: group.type,
+                    members: Math.floor(Math.random() * 5000) + 100, // Mock members count
+                    status: group.status === 'active' ? 'online' : 'offline',
+                    autoposting: group.autoposting,
+                    frequency: group.post_frequency || 4,
+                    lastPost: generateLastPostTime()
+                }));
+                renderGroups();
+                notify.success('Группы загружены');
+            } catch (error) {
+                console.log('Using mock groups data');
+                groups = getMockGroups();
+                renderGroups();
+            }
+        }
+
+        function getMockGroups() {
+            return [
+                {
+                    id: 1,
+                    name: "Tech News",
+                    type: "channel",
+                    members: 1250,
+                    status: "online",
+                    autoposting: true,
+                    frequency: 4,
+                    lastPost: generateLastPostTime()
+                },
+                {
+                    id: 2,
+                    name: "Crypto Community",
+                    type: "supergroup",
+                    members: 3400,
+                    status: "online",
+                    autoposting: false,
+                    frequency: 2,
+                    lastPost: generateLastPostTime()
+                },
+                {
+                    id: 3,
+                    name: "Marketing Tips",
+                    type: "group",
+                    members: 890,
+                    status: "online",
+                    autoposting: true,
+                    frequency: 6,
+                    lastPost: generateLastPostTime()
+                }
+            ];
+        }
+
+        function generateLastPostTime() {
+            const times = ['1 час назад', '2 часа назад', 'Вчера', '2 дня назад', 'Неделю назад'];
+            return times[Math.floor(Math.random() * times.length)];
+        }
+
+        let currentGroupId = null;
+
+        function renderGroups() {
+            const container = document.getElementById('groupsList');
+            container.innerHTML = groups.map(group => `
+                <div class="group-card bg-white rounded-xl p-4 shadow-sm">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="flex-1">
+                            <div class="flex items-center mb-1">
+                                <h3 class="font-semibold text-gray-800 mr-2">${group.name}</h3>
+                                <span class="status-${group.status} w-2 h-2 rounded-full"></span>
+                            </div>
+                            <div class="flex items-center text-sm text-gray-500 mb-2">
+                                <span class="mr-3">${getTypeIcon(group.type)} ${getTypeLabel(group.type)}</span>
+                                <span>${group.members.toLocaleString()} участников</span>
+                            </div>
+                            <div class="text-xs text-gray-400">Последний пост: ${group.lastPost}</div>
+                        </div>
+                        <button onclick="showSettingsModal(${group.id})" class="text-gray-400 hover:text-gray-600 p-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <span class="text-sm text-gray-600 mr-3">Автопостинг</span>
+                            <div class="toggle-switch w-10 h-5 ${group.autoposting ? 'bg-blue-600' : 'bg-gray-300'} rounded-full relative cursor-pointer" onclick="toggleGroupAutoposting(${group.id})">
+                                <div class="absolute top-0.5 ${group.autoposting ? 'left-6' : 'left-0.5'} w-4 h-4 bg-white rounded-full transition-transform"></div>
+                            </div>
+                        </div>
+                        <span class="text-sm text-gray-500">${group.frequency} постов/час</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getTypeIcon(type) {
+            const icons = {
+                'group': '👥',
+                'channel': '📢',
+                'supergroup': '🏢'
+            };
+            return icons[type] || '👥';
+        }
+
+        function getTypeLabel(type) {
+            const labels = {
+                'group': 'Группа',
+                'channel': 'Канал',
+                'supergroup': 'Супергруппа'
+            };
+            return labels[type] || 'Группа';
+        }
+
+        function showAddGroupModal() {
+            document.getElementById('addGroupModal').classList.add('show');
+        }
+
+        function hideAddGroupModal() {
+            document.getElementById('addGroupModal').classList.remove('show');
+            document.getElementById('addGroupForm').reset();
+        }
+
+        function showSettingsModal(groupId) {
+            currentGroupId = groupId;
+            const group = groups.find(g => g.id === groupId);
+            
+            // Update modal with current settings
+            const toggle = document.querySelector('#settingsModal .toggle-switch');
+            toggle.classList.toggle('active', group.autoposting);
+            toggle.classList.toggle('bg-blue-600', group.autoposting);
+            toggle.classList.toggle('bg-gray-300', !group.autoposting);
+            
+            document.getElementById('postFrequency').value = group.frequency;
+            document.getElementById('frequencyValue').textContent = group.frequency;
+            
+            document.getElementById('settingsModal').classList.add('show');
+        }
+
+        function hideSettingsModal() {
+            document.getElementById('settingsModal').classList.remove('show');
+        }
+
+        function toggleAutoposting(element) {
+            element.classList.toggle('active');
+            element.classList.toggle('bg-blue-600');
+            element.classList.toggle('bg-gray-300');
+            const thumb = element.querySelector('div');
+            thumb.style.transform = element.classList.contains('active') ? 'translateX(1.5rem)' : 'translateX(0)';
+        }
+
+        function toggleGroupAutoposting(groupId) {
+            const group = groups.find(g => g.id === groupId);
+            group.autoposting = !group.autoposting;
+            renderGroups();
+        }
+
+        function saveSettings() {
+            if (currentGroupId) {
+                const group = groups.find(g => g.id === currentGroupId);
+                const modal = document.getElementById('settingsModal');
+                const toggle = modal.querySelector('.toggle-switch');
+                
+                group.autoposting = toggle.classList.contains('active');
+                group.frequency = parseInt(document.getElementById('postFrequency').value);
+                
+                renderGroups();
+                hideSettingsModal();
+                
+                // Show success message
+                showNotification('Настройки сохранены');
+            }
+        }
+
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 left-4 right-4 bg-green-600 text-white px-4 py-3 rounded-lg z-50 text-center';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Form submission
+        document.getElementById('addGroupForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const groupData = {
+                chat_id: document.getElementById('groupId').value,
+                name: document.getElementById('groupName').value,
+                type: document.getElementById('groupType').value,
+                autoposting: false,
+                post_frequency: 4
+            };
+            
+            try {
+                const result = await apiClient.addGroup(groupData);
+                if (result.success) {
+                    await loadGroups();
+                    hideAddGroupModal();
+                    notify.success('Группа добавлена');
+                } else {
+                    notify.error(result.message || 'Ошибка при добавлении группы');
+                }
+            } catch (error) {
+                // Fallback: добавление в локальный массив
+                const newGroup = {
+                    id: Date.now(),
+                    ...groupData,
+                    members: Math.floor(Math.random() * 5000) + 100,
+                    status: 'online',
+                    frequency: groupData.post_frequency,
+                    lastPost: 'Никогда'
+                };
+                
+                groups.push(newGroup);
+                renderGroups();
+                hideAddGroupModal();
+                notify.success('Группа добавлена (локально)');
+            }
+        });
+
+        // Frequency slider
+        document.getElementById('postFrequency').addEventListener('input', function(e) {
+            document.getElementById('frequencyValue').textContent = e.target.value;
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            renderGroups();
+            
+            // Animate cards
+            anime({
+                targets: '.group-card',
+                translateY: [30, 0],
+                opacity: [0, 1],
+                delay: anime.stagger(100),
+                duration: 600,
+                easing: 'easeOutExpo'
+            });
+        });
+    </script>
+</body>
+</html>

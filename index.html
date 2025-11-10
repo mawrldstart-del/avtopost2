@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram AutoPoster - Автоматизация постинга</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/splide@4.1.4/dist/js/splide.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/splide@4.1.4/dist/css/splide.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); }
+        .hero-gradient { background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%); }
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        .feature-icon { background: linear-gradient(135deg, #3498db, #2c3e50); }
+        .stats-counter { font-size: 2rem; font-weight: 700; color: #2c3e50; }
+        .floating-animation { animation: float 6s ease-in-out infinite; }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        .pulse-animation { animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Hero Section -->
+    <section class="hero-gradient text-white px-4 py-8 mb-8">
+        <div class="max-w-md mx-auto text-center">
+            <div class="floating-animation mb-6">
+                <div class="w-20 h-20 mx-auto bg-white/20 rounded-2xl flex items-center justify-center mb-4">
+                    <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                </div>
+            </div>
+            <h1 class="text-3xl font-bold mb-4">Telegram AutoPoster</h1>
+            <p class="text-lg opacity-90 mb-6">Автоматизируйте постинг в ваших Telegram группах и каналах</p>
+            <button onclick="scrollToFeatures()" class="bg-white text-blue-600 px-8 py-3 rounded-xl font-semibold hover:bg-gray-100 transition-colors">
+                Начать работу
+            </button>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="px-4 mb-8">
+        <div class="max-w-md mx-auto">
+            <div class="grid grid-cols-3 gap-4">
+                <div class="bg-white rounded-xl p-4 text-center card-hover">
+                    <div class="stats-counter" data-target="1250">0</div>
+                    <div class="text-sm text-gray-600">Активных групп</div>
+                </div>
+                <div class="bg-white rounded-xl p-4 text-center card-hover">
+                    <div class="stats-counter" data-target="50">0</div>
+                    <div class="text-sm text-gray-600">Тыс. постов</div>
+                </div>
+                <div class="bg-white rounded-xl p-4 text-center card-hover">
+                    <div class="stats-counter" data-target="99">0</div>
+                    <div class="text-sm text-gray-600">% uptime</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Carousel -->
+    <section id="features" class="px-4 mb-8">
+        <div class="max-w-md mx-auto">
+            <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">Возможности</h2>
+            <div class="splide" id="features-carousel">
+                <div class="splide__track">
+                    <ul class="splide__list">
+                        <li class="splide__slide">
+                            <div class="bg-white rounded-2xl p-6 card-hover">
+                                <div class="feature-icon w-16 h-16 rounded-xl flex items-center justify-center mb-4 mx-auto">
+                                    <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M9 11H7v6h2v-6zm4 0h-2v6h2v-6zm4 0h-2v6h2v-6zm2.5-9H19V1h-2v1H7V1H5v1H3.5C2.67 2 2 2.67 2 3.5v17C2 21.33 2.67 22 3.5 22h17c.83 0 1.5-.67 1.5-1.5v-17C22 2.67 21.33 2 20.5 2z"/>
+                                    </svg>
+                                </div>
+                                <h3 class="text-lg font-semibold mb-2 text-center">Автоматическое планирование</h3>
+                                <p class="text-gray-600 text-center text-sm">Планируйте посты заранее и публикуйте в нужное время автоматически</p>
+                            </div>
+                        </li>
+                        <li class="splide__slide">
+                            <div class="bg-white rounded-2xl p-6 card-hover">
+                                <div class="feature-icon w-16 h-16 rounded-xl flex items-center justify-center mb-4 mx-auto">
+                                    <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm4 18v-6h2.5l-2.54-7.63A1.5 1.5 0 0 0 18.54 8H17c-.8 0-1.54.37-2.01.99L13 12l-1.99-3.01A2.5 2.5 0 0 0 8.5 8H7.46c-.8 0-1.54.37-2.01.99L5.5 10H8v12h2v-6h4v6h6z"/>
+                                    </svg>
+                                </div>
+                                <h3 class="text-lg font-semibold mb-2 text-center">Мультимедиа поддержка</h3>
+                                <p class="text-gray-600 text-center text-sm">Отправляйте изображения, видео и документы вместе с текстом</p>
+                            </div>
+                        </li>
+                        <li class="splide__slide">
+                            <div class="bg-white rounded-2xl p-6 card-hover">
+                                <div class="feature-icon w-16 h-16 rounded-xl flex items-center justify-center mb-4 mx-auto">
+                                    <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                                    </svg>
+                                </div>
+                                <h3 class="text-lg font-semibold mb-2 text-center">Детальная аналитика</h3>
+                                <p class="text-gray-600 text-center text-sm">Отслеживайте эффективность постов и рост аудитории</p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- App Mockup -->
+    <section class="px-4 mb-8">
+        <div class="max-w-md mx-auto">
+            <div class="bg-white rounded-2xl p-6 card-hover">
+                <img src="hero-app-mockup.png" alt="App Interface" class="w-full rounded-xl mb-4">
+                <h3 class="text-lg font-semibold mb-2 text-center">Интуитивный интерфейс</h3>
+                <p class="text-gray-600 text-center text-sm">Простое и понятное управление всеми функциями через мобильное приложение</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- User Reviews -->
+    <section class="px-4 mb-20">
+        <div class="max-w-md mx-auto">
+            <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">Отзывы пользователей</h2>
+            <div class="space-y-4">
+                <div class="bg-white rounded-xl p-4 card-hover">
+                    <div class="flex items-center mb-3">
+                        <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold mr-3">
+                            АК
+                        </div>
+                        <div>
+                            <div class="font-semibold text-sm">Александр К.</div>
+                            <div class="text-xs text-gray-500">Администратор 15 групп</div>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600">"Сэкономил массу времени на постинге в группы. Интерфейс простой, все работает стабильно."</p>
+                    <div class="flex text-yellow-400 text-xs mt-2">
+                        ★★★★★
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl p-4 card-hover">
+                    <div class="flex items-center mb-3">
+                        <div class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-semibold mr-3">
+                            МИ
+                        </div>
+                        <div>
+                            <div class="font-semibold text-sm">Мария И.</div>
+                            <div class="text-xs text-gray-500">Маркетолог</div>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600">"Отличный инструмент для SMM. Аналитика помогает понять, что работает лучше."</p>
+                    <div class="flex text-yellow-400 text-xs mt-2">
+                        ★★★★★
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Bottom Navigation -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 z-50">
+        <div class="max-w-md mx-auto">
+            <div class="flex justify-around">
+                <a href="index.html" class="flex flex-col items-center py-2 text-blue-600">
+                    <svg class="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+                    </svg>
+                    <span class="text-xs">Главная</span>
+                </a>
+                <a href="groups.html" class="flex flex-col items-center py-2 text-gray-400">
+                    <svg class="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm4 18v-6h2.5l-2.54-7.63A1.5 1.5 0 0 0 18.54 8H17c-.8 0-1.54.37-2.01.99L13 12l-1.99-3.01A2.5 2.5 0 0 0 8.5 8H7.46c-.8 0-1.54.37-2.01.99L5.5 10H8v12h2v-6h4v6h6z"/>
+                    </svg>
+                    <span class="text-xs">Группы</span>
+                </a>
+                <a href="dashboard.html" class="flex flex-col items-center py-2 text-gray-400">
+                    <svg class="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                    </svg>
+                    <span class="text-xs">Аналитика</span>
+                </a>
+                <a href="scheduler.html" class="flex flex-col items-center py-2 text-gray-400">
+                    <svg class="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                    </svg>
+                    <span class="text-xs">Планировщик</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <script src="notifications.js"></script>
+    <script src="api-client.js"></script>
+    <script>
+        // Initialize Splide carousel
+        document.addEventListener('DOMContentLoaded', function() {
+            new Splide('#features-carousel', {
+                type: 'loop',
+                perPage: 1,
+                autoplay: true,
+                interval: 4000,
+                arrows: false,
+                pagination: true,
+                gap: '1rem'
+            }).mount();
+
+            // Animate counters
+            animateCounters();
+
+            // Animate elements on scroll
+            anime({
+                targets: '.card-hover',
+                translateY: [50, 0],
+                opacity: [0, 1],
+                delay: anime.stagger(200),
+                duration: 800,
+                easing: 'easeOutExpo'
+            });
+
+            // Показать приветственное уведомление
+            setTimeout(() => {
+                notify.success('Добро пожаловать в Telegram AutoPoster!');
+            }, 1000);
+        });
+
+        function animateCounters() {
+            const counters = document.querySelectorAll('.stats-counter');
+            counters.forEach(counter => {
+                const target = parseInt(counter.getAttribute('data-target'));
+                anime({
+                    targets: counter,
+                    innerHTML: [0, target],
+                    duration: 2000,
+                    delay: 500,
+                    round: 1,
+                    easing: 'easeOutExpo'
+                });
+            });
+        }
+
+        function scrollToFeatures() {
+            document.getElementById('features').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Демонстрация дополнительных функций
+        function showAdvancedFeatures() {
+            notify.info('Расширенные функции доступны в полной версии');
+        }
+
+        function showNotificationDemo() {
+            const types = ['success', 'error', 'warning', 'info'];
+            const messages = [
+                'Пост успешно опубликован!',
+                'Ошибка подключения к серверу',
+                'Проверьте настройки перед публикацией',
+                'Новое обновление доступно'
+            ];
+            
+            const randomType = types[Math.floor(Math.random() * types.length)];
+            const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+            
+            notify[randomType](randomMessage);
+        }
+
+        // Загрузка реальных данных с сервера
+        async function loadRealStats() {
+            try {
+                const stats = await apiClient.getStats();
+                
+                // Обновление счетчиков
+                document.getElementById('totalPosts').textContent = stats.total_posts || 0;
+                document.getElementById('totalViews').textContent = APIUtils.formatNumber(stats.total_views || 45680);
+                document.getElementById('avgEngagement').textContent = stats.avg_engagement || '4.2';
+                document.getElementById('activeGroups').textContent = stats.total_groups || 0;
+                
+                print_success("Реальные данные загружены");
+            } catch (error) {
+                console.log('Using mock data for stats');
+            }
+        }
+    </script>
+</body>
+</html>
