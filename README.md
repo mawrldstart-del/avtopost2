@@ -1,254 +1,139 @@
-# Telegram AutoPoster Bot 🤖
+# Telegram AutoPoster Bot
 
-Полноценное приложение для автоматического постинга в Telegram группы и каналы с веб-интерфейсом управления.
+Asynchronous Telegram bot and companion Web API for scheduling and publishing posts to groups or channels. The project is built on top of [`python-telegram-bot`](https://docs.python-telegram-bot.org/) (Bot API wrapper) and `aiohttp`.
 
-## 🚀 Возможности
+## Features
+- Telegram bot with `/start`, `/help`, `/stats`, and `/groups` commands.
+- SQLite storage for groups, scheduled posts, templates, and statistics.
+- APScheduler-based background job that publishes scheduled posts via the [Telegram Bot API](https://core.telegram.org/bots/api).
+- REST API (aiohttp) for managing groups, posts, templates, and exporting data to JSON/ZIP.
+- Windows launcher (`run.bat`) to simplify local runs.
 
-- **📱 Управление через веб-интерфейс** - мобильно-оптимизированное приложение
-- **🤖 Telegram Bot** - автоматическая публикация постов
-- **📊 Расширенная аналитика** - детальная статистика и графики
-- **📝 Шаблоны постов** - 6 готовых шаблонов для разных типов контента
-- **⏰ Планировщик** - отложенная публикация в заданное время
-- **👥 Управление группами** - добавление, настройка, мониторинг
-- **📈 Экспорт данных** - выгрузка статистики и настроек
-- **🔔 Уведомления** - система оповещений о важных событиях
+## Requirements
+- Python 3.8 or newer (per python-telegram-bot 20.7 requirements).
+- Telegram Bot token obtained from [@BotFather](https://core.telegram.org/bots#6-botfather).
+- Optional: HTTPS proxy details if Telegram is blocked in your region.
 
-## 📋 Структура проекта
+## Getting Started
 
-```
-├── bot.py              # Основной файл Telegram бота
-├── requirements.txt    # Зависимости Python
-├── install.sh         # Скрипт установки
-├── docker-compose.yml # Docker Compose конфигурация
-├── Dockerfile         # Docker образ
-├── .env.example       # Пример файла конфигурации
-├── notifications.js   # Система уведомлений (frontend)
-├── analytics.js       # Расширенная аналитика (frontend)
-├── templates.js       # Управление шаблонами (frontend)
-├── index.html         # Главная страница
-├── groups.html        # Управление группами
-├── dashboard.html     # Аналитика и статистика
-├── scheduler.html     # Планировщик постов
-└── README.md          # Этот файл
-```
-
-## 🛠 Установка
-
-### Метод 1: Быстрая установка (рекомендуется)
-
-1. **Клонируйте репозиторий**
-   ```bash
-   git clone https://github.com/your-username/telegram-autoposter.git
-   cd telegram-autoposter
-   ```
-
-2. **Запустите скрипт установки**
-   ```bash
-   chmod +x install.sh
-   ./install.sh
-   ```
-
-3. **Настройте конфигурацию**
-   ```bash
-   cp .env.example .env
-   nano .env  # Отредактируйте файл и добавьте свой TELEGRAM_BOT_TOKEN
-   ```
-
-### Метод 2: Ручная установка
-
-1. **Установите Python 3.8+**
-   ```bash
-   python3 --version  # Должно быть 3.8 или выше
-   ```
-
-2. **Установите зависимости**
-   ```bash
-   pip3 install -r requirements.txt
-   ```
-
-3. **Настройте конфигурацию**
-   ```bash
-   cp .env.example .env
-   # Отредактируйте .env файл
-   ```
-
-4. **Создайте необходимые директории**
-   ```bash
-   mkdir -p logs data media
-   ```
-
-## 🔑 Получение Telegram Bot Token
-
-1. Откройте Telegram и найдите @BotFather
-2. Отправьте команду `/newbot`
-3. Придумайте название бота (например, "My AutoPoster")
-4. Придумайте username бота (должен заканчиваться на bot)
-5. Сохраните полученный токен
-6. Вставьте токен в файл `.env`: `TELEGRAM_BOT_TOKEN=ваш_токен`
-
-## 🚀 Запуск
-
-### Вариант 1: Простой запуск
+### 1. Clone the repository
 ```bash
-./start.sh
+git clone https://github.com/your-username/telegram-autoposter.git
+cd telegram-autoposter
 ```
 
-### Вариант 2: Фоновый запуск
-```bash
-./start_background.sh
+### 2. Create a virtual environment (Windows)
+
+**Command Prompt**
+```bat
+py -3 -m venv venv
+venv\Scripts\activate.bat
 ```
 
-### Вариант 3: Через systemd (Linux)
-```bash
-sudo systemctl start autoposter
-sudo systemctl enable autoposter  # Для автозапуска
+**PowerShell**
+```powershell
+py -3 -m venv venv
+.\venv\Scripts\Activate.ps1
 ```
 
-### Вариант 4: Docker
-```bash
-# Создайте .env файл с настройками
-docker-compose up -d
+### 3. Install dependencies (Windows)
+
+**Command Prompt**
+```bat
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
-## 🌐 Веб-интерфейс
-
-После запуска бота откройте веб-интерфейс:
-**https://2pz6b77t7jczs.ok.kimi.link**
-
-### Основные разделы:
-
-1. **Главная** - обзор возможностей и статистика
-2. **Группы** - управление Telegram группами и каналами
-3. **Аналитика** - детальная статистика и графики
-4. **Планировщик** - создание и управление постами
-
-## 📱 Добавление групп
-
-1. Добавьте бота в группу/канал как администратора
-2. Откройте веб-интерфейс → раздел "Группы"
-3. Нажмите "Добавить группу"
-4. Введите информацию о группе
-5. Настройте параметры автопостинга
-
-## 📝 Создание постов
-
-1. Откройте раздел "Планировщик"
-2. Выберите "Создать пост"
-3. Выберите группы для публикации
-4. Введите текст поста
-5. Установите дату и время публикации
-6. Используйте шаблоны для быстрого создания
-
-## 🎨 Использование шаблонов
-
-Доступные шаблоны:
-- 📰 Новостной пост
-- 📈 Маркетинговый совет
-- 💪 Мотивационный пост
-- 📚 Обучающий пост
-- 🎭 Развлекательный пост
-- 📢 Бизнес-анонс
-
-## 📊 Мониторинг
-
-### Просмотр логов
-```bash
-tail -f logs/bot.log
+**PowerShell**
+```powershell
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
-### Проверка статуса (systemd)
-```bash
-sudo systemctl status autoposter
+### 4. Configure environment variables
+Copy the example file and fill it with your BotFather token and optional settings:
+
+**Command Prompt**
+```bat
+copy .env.example .env
 ```
 
-### Просмотр процессов
-```bash
-ps aux | grep bot.py
+**PowerShell**
+```powershell
+Copy-Item -Path .env.example -Destination .env
+```
+Update `.env` with:
+- `TELEGRAM_BOT_TOKEN` – the token you received from BotFather.
+- `ADMIN_IDS` – comma-separated list of Telegram user IDs allowed to administer the bot.
+- `API_PORT` – port for the aiohttp API (default `8080`).
+- Optional proxy/timeout settings if you must reach Telegram through a proxy (see comments in `.env.example`).
+
+> ℹ️ The bot reads `.env` automatically on startup. The file is ignored by Git to prevent leaking credentials.
+
+## Running the Bot
+
+### Windows
+Run the launcher from the project directory; it creates/activates a virtual environment, checks `.env`, installs dependencies, and starts the bot with logging:
+```bat
+run.bat
+```
+If dependency installation fails, rerun `venv\Scripts\pip.exe install -r requirements.txt` and launch again.
+
+To launch manually after activating the virtual environment, run:
+
+**Command Prompt**
+```bat
+python bot.py
 ```
 
-## 🔧 Настройка
+**PowerShell**
+```powershell
+python bot.py
+```
 
-### Основные параметры (.env)
-- `TELEGRAM_BOT_TOKEN` - токен бота (обязательно)
-- `ADMIN_IDS` - ID администраторов
-- `API_PORT` - порт для Web API (по умолчанию 8080)
-- `LOG_LEVEL` - уровень логирования
+## Web API Overview
+The aiohttp application listens on `API_PORT` (default `8080`) and exposes JSON endpoints:
 
-### Дополнительные настройки
-- Частота постов: от 1 до 24 постов в час
-- Типы контента: текст, изображения, видео, документы
-- Часовые пояса: поддерживаются все временные зоны
-- Автопостинг: можно включать/выключать для каждой группы
+| Method | Path             | Description                             |
+| ------ | ---------------- | --------------------------------------- |
+| GET    | `/api/health`    | Returns bot status and timestamp.       |
+| GET    | `/api/stats`     | Aggregated counters for groups/posts.   |
+| GET    | `/api/groups`    | List of configured groups/channels.     |
+| POST   | `/api/groups`    | Add a new group (expects JSON payload). |
+| GET    | `/api/posts`     | List scheduled/published posts.         |
+| POST   | `/api/posts`     | Schedule a new post.                    |
+| GET    | `/api/templates` | List post templates.                    |
+| POST   | `/api/templates` | Create a template.                      |
+| POST   | `/api/export`    | Export DB snapshots to JSON.            |
+| GET    | `/api/download`  | Download a ZIP with project assets.     |
 
-## 🛡 Безопасность
+All write endpoints expect JSON bodies and respond with structured success/error payloads. Authentication/authorization should be added before exposing the API to the public internet.
 
-- Все данные хранятся локально в SQLite
-- Поддержка прокси для работы в ограниченных сетях
-- Валидация данных на всех уровнях
-- Логирование всех операций
-- Ограничение прав доступа
+## Working with Telegram Bot API
+- Bots must be invited as administrators to target groups/channels before they can post. See the [Telegram Bot API documentation on chat administrators](https://core.telegram.org/bots/api#chatmember) for required rights.
+- Bots cannot initiate chats with users; they can only respond after the user presses “Start” as per [Telegram’s privacy rules](https://core.telegram.org/bots#privacy-mode).
+- The project uses long polling (`Application.updater.start_polling()`) to receive updates. You can adapt the implementation to webhooks by providing `webhook_url` handling in `BotConfig` if needed.
+- Messages are sent with `parse_mode='HTML'`, so ensure your templates use valid HTML tags supported by Telegram.
 
-## 📈 Производительность
+## Downloading the Project Bundle
+You can fetch a ZIP archive generated on demand with all key backend/frontend files:
 
-- Асинхронная обработка всех операций
-- Кэширование для ускорения работы
-- Оптимизированные запросы к базе данных
-- Поддержка высоких нагрузок
+- Browser: open `https://your-server-hostname/api/download`.
+- PowerShell:
+  ```powershell
+  Invoke-WebRequest -Uri "https://your-server-hostname/api/download" -OutFile "autoposter.zip"
+  Expand-Archive -Path "autoposter.zip" -DestinationPath "autoposter"
+  ```
 
-## 🔧 Разработка
+Replace `your-server-hostname` with the host/IP where the bot is running.
 
-### Структура кода
-- `bot.py` - основной файл бота с обработчиками
-- `notifications.js` - система уведомлений (frontend)
-- `analytics.js` - аналитика и графики (frontend)
-- `templates.js` - управление шаблонами (frontend)
+## Troubleshooting
+- **Missing dependencies** – the startup preflight in `bot.py` exits with a helpful message if a required package is absent. Install everything with `pip install -r requirements.txt`.
+- **Invalid token** – Telegram returns `Unauthorized`. Double-check the token in `.env` and regenerate it with BotFather if necessary.
+- **Network/proxy errors** – set `TELEGRAM_PROXY_URL` and timeout overrides if Telegram is blocked by your ISP, or ensure outbound HTTPS traffic is allowed.
+- **Port already in use** – change `API_PORT` to a free port; the bot checks availability before binding the aiohttp server.
 
-### Добавление новых функций
-1. Реализуйте функцию в backend (bot.py)
-2. Добавьте API endpoint в WebAPIServer
-3. Обновите frontend для новой функциональности
-4. Протестируйте все компоненты
+## License
+MIT License. See `LICENSE` for details.
 
-## 🐛 Решение проблем
 
-### Бот не запускается
-1. Проверьте Python версию: `python3 --version`
-2. Убедитесь что все зависимости установлены
-3. Проверьте файл .env на наличие токена
-4. Посмотрите логи: `tail -f logs/bot.log`
-
-### Посты не публикуются
-1. Проверьте что бот добавлен в группу как администратор
-2. Убедитесь что у бота есть права на отправку сообщений
-3. Проверьте настройки конфиденциальности группы
-4. Проверьте логи на наличие ошибок
-
-### Веб-интерфейс не работает
-1. Убедитесь что API сервер запущен
-2. Проверьте порт в настройках
-3. Проверьте firewall и настройки сети
-4. Попробуйте обновить страницу
-
-## 📄 Лицензия
-
-Этот проект находится под лицензией MIT. Подробности в файле LICENSE.
-
-## 🤝 Вклад в разработку
-
-Приветствуются pull request и issue! Для вклада в разработку:
-
-1. Форкните репозиторий
-2. Создайте ветку для новой функции
-3. Реализуйте функцию
-4. Протестируйте работу
-5. Отправьте pull request
-
-## 📞 Поддержка
-
-- Создайте issue для сообщения о багах
-- Используйте discussions для вопросов
-- Проверьте wiki для дополнительной документации
-
----
-
-**Разработано с ❤️ для автоматизации Telegram маркетинга**
