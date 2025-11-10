@@ -1,0 +1,24 @@
+# Environment configuration
+.env
+*.env
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Local data and logs
+logs/
+*.log
+bot.log
+autoposter.db
+*.sqlite3
+
+# Virtual environments
+venv/
+ENV/
+.env/
+
+# OS metadata
+.DS_Store
+Thumbs.db

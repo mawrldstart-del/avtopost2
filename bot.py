@@ -9,17 +9,61 @@ import logging
 import sqlite3
 import json
 import os
+import socket
+import io
+import zipfile
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
+from pathlib import Path
+from typing import Dict, List, Optional, Any, Tuple, Set
 from dataclasses import dataclass, asdict
+import importlib.util
+
+
+def _ensure_dependencies() -> None:
+    """Проверка наличия обязательных зависимостей до импорта."""
+
+    required_modules: Dict[str, str] = {
+        "apscheduler.schedulers.asyncio": "APScheduler",
+        "apscheduler.triggers.cron": "APScheduler",
+        "telegram": "python-telegram-bot",
+        "telegram.ext": "python-telegram-bot",
+        "telegram.error": "python-telegram-bot",
+        "telegram.request": "python-telegram-bot",
+        "aiohttp": "aiohttp",
+        "aiohttp.web": "aiohttp",
+        "httpx": "httpx",
+        "dotenv": "python-dotenv",
+    }
+
+    missing_packages: Set[str] = set()
+
+    for module_path, package_name in required_modules.items():
+        if importlib.util.find_spec(module_path) is None:
+            missing_packages.add(package_name)
+
+    if missing_packages:
+        packages_list = ", ".join(sorted(missing_packages))
+        message = (
+            "Missing required Python packages: "
+            f"{packages_list}.\n"
+            "Install them with `pip install -r requirements.txt` and restart the bot."
+        )
+        raise SystemExit(message)
+
+
+_ensure_dependencies()
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from telegram import Bot, Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters
-from telegram.error import TelegramError
+from telegram.error import TelegramError, InvalidToken
+from telegram.request import HTTPXRequest
 import aiohttp
 from aiohttp import web
 import uuid
+import httpx
+from dotenv import load_dotenv
 
 # Настройка логирования
 logging.basicConfig(
@@ -32,6 +76,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Загрузка переменных окружения из .env рядом со скриптом, если файл существует
+BASE_DIR = Path(__file__).resolve().parent
+load_dotenv(BASE_DIR / ".env")
+
 # Конфигурация
 @dataclass
 class BotConfig:
@@ -40,6 +88,112 @@ class BotConfig:
     database_path: str = 'autoposter.db'
     api_port: int = 8080
     webhook_url: Optional[str] = None
+    proxy_url: Optional[str] = None
+    read_timeout: Optional[float] = None
+    write_timeout: Optional[float] = None
+    connect_timeout: Optional[float] = None
+    pool_timeout: Optional[float] = None
+
+
+def parse_admin_ids(raw_ids: str) -> List[int]:
+    """Преобразование строки с ID администраторов в список чисел."""
+    admin_ids: List[int] = []
+
+    for item in raw_ids.split(','):
+        value = item.strip()
+        if not value:
+            continue
+
+        try:
+            admin_ids.append(int(value))
+        except ValueError:
+            logger.warning("Ignoring invalid admin ID '%s'", value)
+
+    return admin_ids
+
+
+def parse_optional_float_env(var_name: str) -> Optional[float]:
+    """Считывание необязательных значений таймаутов из переменных окружения."""
+    raw_value = os.getenv(var_name)
+    if raw_value is None or raw_value == "":
+        return None
+
+    try:
+        return float(raw_value)
+    except ValueError:
+        logger.warning("Invalid %s value '%s' – using default", var_name, raw_value)
+        return None
+
+
+def build_httpx_request(config: BotConfig) -> HTTPXRequest:
+    """Создание HTTPXRequest с учётом настроек прокси и таймаутов."""
+    request_kwargs: Dict[str, Any] = {}
+
+    if config.proxy_url:
+        request_kwargs["proxy_url"] = config.proxy_url
+
+    if config.read_timeout is not None:
+        request_kwargs["read_timeout"] = config.read_timeout
+
+    if config.write_timeout is not None:
+        request_kwargs["write_timeout"] = config.write_timeout
+
+    if config.connect_timeout is not None:
+        request_kwargs["connect_timeout"] = config.connect_timeout
+
+    if config.pool_timeout is not None:
+        request_kwargs["pool_timeout"] = config.pool_timeout
+
+    return HTTPXRequest(**request_kwargs)
+
+
+async def validate_telegram_connection(config: BotConfig) -> bool:
+    """Проверка доступности Telegram API и валидности токена."""
+    request = build_httpx_request(config)
+    bot = Bot(config.token, request=request)
+
+    try:
+        me = await bot.get_me()
+        logger.info(
+            "Authenticated as %s (@%s)",
+            me.first_name,
+            me.username or "unknown",
+        )
+        return True
+    except InvalidToken:
+        logger.error("Telegram rejected TELEGRAM_BOT_TOKEN – verify the token value")
+    except httpx.ProxyError as err:
+        logger.error(
+            "Failed to reach Telegram through proxy %s: %s",
+            config.proxy_url,
+            err,
+        )
+    except httpx.HTTPError as err:
+        logger.error("Network error while contacting Telegram API: %s", err)
+    except TelegramError as err:
+        logger.error("Telegram API error during validation: %s", err)
+    except OSError as err:
+        logger.error("OS error during Telegram connectivity check: %s", err)
+    finally:
+        await bot.shutdown()
+
+    logger.error(
+        "Bot startup aborted due to connection issues. "
+        "Check network access, proxy configuration or the provided token."
+    )
+    return False
+
+
+def ensure_port_available(port: int, host: str = "0.0.0.0") -> Tuple[bool, Optional[str]]:
+    """Проверка доступности порта для запуска веб-сервера."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            sock.bind((host, port))
+        except OSError as err:
+            return False, str(err)
+
+    return True, None
     
 class DatabaseManager:
     """Управление базой данных"""
@@ -194,12 +348,20 @@ class Template:
 
 class TelegramAutoPoster:
     """Основной класс Telegram AutoPoster Bot"""
-    
-    def __init__(self, config: BotConfig):
+
+    def __init__(self, config: BotConfig, request: Optional[HTTPXRequest] = None):
         self.config = config
         self.db = DatabaseManager(config.database_path)
-        self.bot = Bot(config.token)
-        self.application = Application.builder().token(config.token).build()
+        self.request = request or build_httpx_request(config)
+
+        builder = Application.builder().token(config.token).request(self.request)
+
+        if config.proxy_url:
+            builder.proxy_url(config.proxy_url)
+            builder.get_updates_proxy_url(config.proxy_url)
+
+        self.application = builder.build()
+        self.bot = self.application.bot
         self.scheduler = AsyncIOScheduler()
         self.setup_handlers()
         
@@ -431,7 +593,7 @@ class WebAPIServer:
         self.port = port
         self.app = web.Application()
         self.setup_routes()
-    
+
     def setup_routes(self):
         """Настройка маршрутов API"""
         self.app.router.add_get('/api/health', self.health_check)
@@ -443,7 +605,56 @@ class WebAPIServer:
         self.app.router.add_get('/api/templates', self.get_templates)
         self.app.router.add_post('/api/templates', self.create_template)
         self.app.router.add_post('/api/export', self.export_data)
-    
+        self.app.router.add_get('/api/download', self.download_bundle)
+
+    def _collect_bundle_files(self) -> List[Path]:
+        """Подбор файлов, включаемых в zip-архив для скачивания."""
+        patterns = (
+            '*.py', '*.html', '*.js', '*.css', '*.png', '*.jpg', '*.jpeg', '*.svg'
+        )
+
+        collected: List[Path] = []
+        seen: Set[Path] = set()
+
+        for pattern in patterns:
+            for path in BASE_DIR.rglob(pattern):
+                if not path.is_file():
+                    continue
+
+                try:
+                    relative = path.relative_to(BASE_DIR)
+                except ValueError:
+                    continue
+
+                if relative.parts and relative.parts[0].startswith('.'):
+                    continue
+
+                if '__pycache__' in relative.parts:
+                    continue
+
+                if path not in seen:
+                    seen.add(path)
+                    collected.append(path)
+
+        additional = [
+            BASE_DIR / 'README.md',
+            BASE_DIR / 'requirements.txt',
+            BASE_DIR / 'docker-compose.yml',
+            BASE_DIR / 'Dockerfile',
+            BASE_DIR / 'install.sh',
+            BASE_DIR / 'install_windows.bat',
+            BASE_DIR / 'run.bat',
+            BASE_DIR / 'run_minimal.bat',
+            BASE_DIR / 'start.sh',
+            BASE_DIR / 'stop.sh',
+        ]
+
+        for path in additional:
+            if path.exists() and path.is_file() and path not in seen:
+                collected.append(path)
+
+        return sorted(collected)
+
     async def health_check(self, request):
         """Проверка состояния сервера"""
         return web.json_response({
@@ -616,34 +827,105 @@ class WebAPIServer:
                 'statistics': self.bot.db.execute_query("SELECT * FROM statistics"),
                 'export_time': datetime.now().isoformat()
             }
-            
+
             return web.json_response(data)
         except Exception as e:
             logger.error(f"Error exporting data: {e}")
             return web.json_response({'error': str(e)}, status=500)
-    
+
+    async def download_bundle(self, request):
+        """Формирование zip-архива проекта для скачивания через веб-интерфейс."""
+        try:
+            bundle_files = self._collect_bundle_files()
+
+            if not bundle_files:
+                return web.json_response(
+                    {'error': 'No project files available for download'},
+                    status=404,
+                )
+
+            buffer = io.BytesIO()
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            archive_name = f'autoposter_bundle_{timestamp}.zip'
+
+            with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as archive:
+                for file_path in bundle_files:
+                    relative_name = file_path.relative_to(BASE_DIR)
+                    archive.write(file_path, arcname=str(relative_name))
+
+            buffer.seek(0)
+
+            headers = {
+                'Content-Disposition': f'attachment; filename="{archive_name}"'
+            }
+
+            return web.Response(
+                body=buffer.getvalue(),
+                headers=headers,
+                content_type='application/zip'
+            )
+        except Exception as exc:
+            logger.error(f"Error creating download bundle: {exc}")
+            return web.json_response({'error': str(exc)}, status=500)
+
     async def run(self):
         """Запуск Web API сервера"""
         runner = web.AppRunner(self.app)
         await runner.setup()
-        site = web.TCPSite(runner, '0.0.0.0', self.port)
-        await site.start()
+        try:
+            site = web.TCPSite(runner, '0.0.0.0', self.port)
+            await site.start()
+        except OSError as err:
+            logger.error(
+                "Failed to bind Web API server to port %s: %s",
+                self.port,
+                err,
+            )
+            await runner.cleanup()
+            raise
+
         logger.info(f"Web API server started on port {self.port}")
 
 async def main():
     """Главная функция"""
     # Загрузка конфигурации
+    admin_ids_env = os.getenv('ADMIN_IDS', '123456789')
+    api_port_env = os.getenv('API_PORT', '8080')
+
+    try:
+        api_port = int(api_port_env)
+    except ValueError:
+        logger.warning("Invalid API_PORT value '%s' – falling back to 8080", api_port_env)
+        api_port = 8080
+
     config = BotConfig(
         token=os.getenv('TELEGRAM_BOT_TOKEN', 'YOUR_BOT_TOKEN_HERE'),
-        admin_ids=[int(id) for id in os.getenv('ADMIN_IDS', '123456789').split(',')],
-        api_port=int(os.getenv('API_PORT', '8080'))
+        admin_ids=parse_admin_ids(admin_ids_env),
+        api_port=api_port,
+        proxy_url=os.getenv('TELEGRAM_PROXY_URL') or None,
+        read_timeout=parse_optional_float_env('TELEGRAM_READ_TIMEOUT'),
+        write_timeout=parse_optional_float_env('TELEGRAM_WRITE_TIMEOUT'),
+        connect_timeout=parse_optional_float_env('TELEGRAM_CONNECT_TIMEOUT'),
+        pool_timeout=parse_optional_float_env('TELEGRAM_POOL_TIMEOUT'),
     )
-    
+
+    port_available, port_error = ensure_port_available(config.api_port)
+    if not port_available:
+        logger.error(
+            "Web API port %s is unavailable: %s. Update API_PORT to a free port.",
+            config.api_port,
+            port_error,
+        )
+        return
+
     # Проверка токена
     if config.token == 'YOUR_BOT_TOKEN_HERE':
         logger.error("Please set TELEGRAM_BOT_TOKEN environment variable")
         return
-    
+
+    if not await validate_telegram_connection(config):
+        return
+
     # Создание экземпляра бота
     bot = TelegramAutoPoster(config)
     
