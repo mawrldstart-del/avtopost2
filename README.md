@@ -7,7 +7,7 @@ Asynchronous Telegram bot and companion Web API for scheduling and publishing po
 - SQLite storage for groups, scheduled posts, templates, and statistics.
 - APScheduler-based background job that publishes scheduled posts via the [Telegram Bot API](https://core.telegram.org/bots/api).
 - REST API (aiohttp) for managing groups, posts, templates, and exporting data to JSON/ZIP.
-- Windows launcher (`run.bat`) and Linux helper script (`start.sh`) to simplify local runs.
+- Windows launcher (`run.bat`) to simplify local runs.
 
 ## Requirements
 - Python 3.8 or newer (per python-telegram-bot 20.7 requirements).
@@ -22,22 +22,45 @@ git clone https://github.com/your-username/telegram-autoposter.git
 cd telegram-autoposter
 ```
 
-### 2. Create a virtual environment
-```bash
-python3 -m venv venv
-source venv/bin/activate  # On Windows use: venv\Scripts\activate
+### 2. Create a virtual environment (Windows)
+
+**Command Prompt**
+```bat
+py -3 -m venv venv
+venv\Scripts\activate.bat
 ```
 
-### 3. Install dependencies
-```bash
-pip install --upgrade pip
-pip install -r requirements.txt
+**PowerShell**
+```powershell
+py -3 -m venv venv
+.\venv\Scripts\Activate.ps1
+```
+
+### 3. Install dependencies (Windows)
+
+**Command Prompt**
+```bat
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+**PowerShell**
+```powershell
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
 ### 4. Configure environment variables
 Copy the example file and fill it with your BotFather token and optional settings:
-```bash
-cp .env.example .env
+
+**Command Prompt**
+```bat
+copy .env.example .env
+```
+
+**PowerShell**
+```powershell
+Copy-Item -Path .env.example -Destination .env
 ```
 Update `.env` with:
 - `TELEGRAM_BOT_TOKEN` – the token you received from BotFather.
@@ -49,19 +72,24 @@ Update `.env` with:
 
 ## Running the Bot
 
-### Linux/macOS
-Use the helper script after activating your virtual environment:
-```bash
-./start.sh
-```
-The script verifies dependencies, checks that `.env` contains a real token, and pipes logs to `logs/bot.log`. You can also run the bot manually with `python3 bot.py`.
-
-### Windows (Command Prompt)
-Run the launcher, which creates/activates a virtual environment and starts the bot with logging:
+### Windows
+Run the launcher from the project directory; it creates/activates a virtual environment, checks `.env`, installs dependencies, and starts the bot with logging:
 ```bat
 run.bat
 ```
 If dependency installation fails, rerun `venv\Scripts\pip.exe install -r requirements.txt` and launch again.
+
+To launch manually after activating the virtual environment, run:
+
+**Command Prompt**
+```bat
+python bot.py
+```
+
+**PowerShell**
+```powershell
+python bot.py
+```
 
 ## Web API Overview
 The aiohttp application listens on `API_PORT` (default `8080`) and exposes JSON endpoints:
@@ -95,11 +123,6 @@ You can fetch a ZIP archive generated on demand with all key backend/frontend fi
   ```powershell
   Invoke-WebRequest -Uri "https://your-server-hostname/api/download" -OutFile "autoposter.zip"
   Expand-Archive -Path "autoposter.zip" -DestinationPath "autoposter"
-  ```
-- curl:
-  ```bash
-  curl -L "https://your-server-hostname/api/download" -o autoposter.zip
-  unzip autoposter.zip -d autoposter
   ```
 
 Replace `your-server-hostname` with the host/IP where the bot is running.
